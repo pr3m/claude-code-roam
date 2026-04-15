@@ -32,20 +32,18 @@ Confirm `~/Library/LaunchAgents/com.pr3m.roam.watchdog.plist` was created.
 
 ## Step 3 — Status-line indicator
 
-Read `~/.claude/settings.json`:
+Check current state:
 
-- **If no `statusLine` is set**: ask user "Add a 🎒 indicator to the Claude Code bottom bar?" Use `AskUserQuestion`. On yes, use `Edit` tool to set:
-  ```json
-  "statusLine": {
-    "type": "command",
-    "command": "bash \"$HOME/.claude/roam/bin/roam-cli\" indicator",
-    "refreshInterval": 30
-  }
-  ```
-- **If a `statusLine` is already set**, offer three paths via `AskUserQuestion`:
-  1. `Wrap existing` (recommended) — plugin writes `~/.claude/bin/roam-wrapped-statusline.sh` calling both the user's command and `roam-cli indicator`, then points `statusLine.command` at the wrapper. Original script untouched.
-  2. `Patch existing` — append `$(~/.claude/roam/bin/roam-cli indicator)` to the user's script (with `.pre-roam` backup).
-  3. `Skip` — leave everything as-is, rely on SessionStart banner.
+```sh
+~/.claude/roam/bin/roam-cli statusline-check
+```
+
+Output:
+- `integrated` / `ours-minimal` → already set up, skip.
+- `absent` → offer to add: `~/.claude/roam/bin/roam-cli statusline-new`
+- `other` → offer to wrap: `~/.claude/roam/bin/roam-cli statusline-wrap` (preserves the user's existing script in a composite).
+
+Use `AskUserQuestion` as described in the `/roam` skill for the interactive picker.
 
 ## Step 3b — Offer passwordless pmset (optional, reliable auto-exit)
 

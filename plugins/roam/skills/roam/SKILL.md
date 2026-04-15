@@ -138,7 +138,57 @@ Show output verbatim. Exit codes:
 - `5` → sudo declined or cancelled — the script handles the password prompt itself via a native macOS dialog (no terminal needed). If the user dismissed it, tell them: "Sudo prompt was cancelled. Run `/roam` again when you're ready, or accept the sudoers rule during `/roam:install` to skip the password entirely."
 - `6` → pmset failed
 
-## Step 6 — Nudge toward remote-control
+## Step 6 — Offer the 🎒 status-line indicator (first run only)
+
+After a successful enter, check if the indicator is already integrated:
+
+```sh
+~/.claude/roam/bin/roam-cli statusline-check
+```
+
+Output:
+- `integrated` or `ours-minimal` → already set up, skip this step silently.
+- `other` → user has their own statusLine. Offer to wrap it (preserves their script — both outputs composed side by side).
+- `absent` → no statusLine at all. Offer a minimal one.
+
+Also check the config for a `statusLineOptOut` flag. If `true`, skip silently (user previously said no).
+
+### If state is `other` (existing user statusLine)
+
+Use `AskUserQuestion`:
+- Header: `Status line`
+- Question: `Add a 🎒 indicator to the Claude Code bottom bar so you can tell at a glance that roam is active? Your existing status line stays untouched — I'll wrap it with a composite script that shows both your current content and the 🎒.`
+- Options:
+  - `Yes, wrap it (recommended)` / "Wrapper script calls both your existing command and the roam indicator"
+  - `Yes, replace with minimal` / "Drop existing status line, use just 🎒" (rare — only if they want to simplify)
+  - `No thanks` / "Don't add an indicator; rely on the SessionStart banner"
+
+On **Yes, wrap it**:
+```sh
+~/.claude/roam/bin/roam-cli statusline-wrap
+```
+
+On **Yes, replace with minimal**:
+```sh
+~/.claude/roam/bin/roam-cli statusline-new
+```
+
+On **No thanks** → record the opt-out in config (so we never nag again). Use `Edit` to add `"statusLineOptOut": true` to the config file. Then tell the user: "Got it — SessionStart banner will remind you roam is active. Rerun `/roam:install` any time if you change your mind."
+
+### If state is `absent`
+
+Use `AskUserQuestion`:
+- Header: `Status line`
+- Question: `Add a 🎒 indicator to the Claude Code bottom bar so you can see at a glance that roam is active?`
+- Options: `Yes, add it (recommended)` / `No thanks`
+
+On Yes: `~/.claude/roam/bin/roam-cli statusline-new`. On No: record opt-out in config.
+
+### After integration
+
+Tell the user: "🎒 should appear in your bottom bar within 30s (Claude Code re-polls the status line). You may need to trigger any UI activity to see the refresh."
+
+## Step 7 — Nudge toward remote-control
 
 The enter output already prints "Run /remote-control next". If this is a first-time user, one clarifying sentence: "Remote control gives you a URL you can open on your phone to keep talking to this same session while you're away."
 

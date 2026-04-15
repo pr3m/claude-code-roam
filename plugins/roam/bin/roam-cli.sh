@@ -55,6 +55,10 @@ case "$CMD" in
     echo "absent"
     exit 1
     ;;
+  statusline-check|statusline-new|statusline-wrap|statusline-unwrap)
+    sub="${CMD#statusline-}"
+    exec node "$SELF_DIR/statusline.js" "$sub" "$@"
+    ;;
   detect)
     # One-shot detection: exit 0 + kind/ssid/gateway if on a known hotspot,
     # exit 1 if not. No polling.

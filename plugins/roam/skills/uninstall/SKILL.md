@@ -33,12 +33,13 @@ If exit 0 (installed), ask the user: "Remove the pmset passwordless sudo rule?" 
 
 ## Step 3 — Restore status line
 
-Check `~/.claude/settings.json` `statusLine`:
-- Points at `roam-cli indicator` (plugin-installed minimal one) → ask: remove entirely or leave empty custom slot? Apply choice.
-- Points at a `roam-wrapped-statusline.sh` (wrap option) → restore the user's original `statusLine.command` from the wrapper's contents, delete the wrapper.
-- User's script was patched (patch option) → restore from `.pre-roam` backup, delete the backup.
+```sh
+~/.claude/roam/bin/roam-cli statusline-check
+```
 
-Show diff before each edit. Get approval per change.
+- `ours-minimal` → ask user: "Remove the roam-only status line entirely?" On yes, use `Edit` to delete the `statusLine` key from `~/.claude/settings.json`.
+- `integrated` (wrapped mode) → `~/.claude/roam/bin/roam-cli statusline-unwrap` restores the user's original `statusLine.command` automatically, reading the embedded original out of the wrapper script, then deletes the wrapper.
+- `absent` / `other` → nothing to restore.
 
 ## Step 4 — Offer to delete config / state / symlinks
 
