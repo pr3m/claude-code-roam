@@ -20,7 +20,7 @@ This plugin flips exactly what you need and nothing else: blocks lid-close sleep
 - **Status-line indicator** — `🎒 roam on` appears in Claude Code's bottom bar. If you already have a custom status line, roam wraps it (your script stays untouched) — never replaces.
 - **Push notification on Stop** — when Claude stops for input during roam and you're not actively typing, macOS sends a notification. Your phone sees it.
 - **Auto-detect local use** — if roam is active but you're typing on the device directly (lid open, HID activity, not over SSH), roam softly suggests `/roam:off`. Once per 15 min, non-blocking.
-- **Constrained yolo** (optional) — a small hardcoded set of read-only dev tools auto-approves (`git`, `ls`, `cat`, `grep`, `node`/`npm` build commands, …) so Claude doesn't stall on routine work. Anything outside that set still prompts. Universal security patterns (shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches) always prompt regardless. See **[How yolo decides](#how-yolo-decides)** below.
+- **Constrained yolo** (optional) — a small hardcoded set of read-only dev tools auto-approves (`git`, `ls`, `cat`, `grep`, `node`/`npm` build commands, …) so Claude doesn't stall on routine work. Anything outside that set still prompts. Universal security patterns (shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches) always prompt regardless. Toggle per-session via `/roam:yolo` or change the permanent default via `/roam:config`. See **[How yolo decides](#how-yolo-decides)** below.
 - **Honors your own Claude Code allow rules** — yolo also respects `Bash(...)` patterns already in your `~/.claude/settings.json` allow list, so commands you've previously opted into (e.g. `Bash(npm run test:*)`) don't get re-asked during roam.
 - **Battery guard** — watchdog auto-exits below 10% (configurable). Forces sleep via AppleScript so your work is preserved even if the pmset revert needs sudo.
 - **Crash recovery** — LaunchAgent watchdog polls every 60s, cleans up stale state if Claude Code crashes mid-session.
@@ -113,7 +113,7 @@ Located at `~/.claude/roam/config.json`. Edit via `/roam:config` or directly:
 | Field | Purpose |
 |---|---|
 | `hotspot_ssid` | The Wi-Fi name (not password) roam reminds you to connect to. Empty = no reminder. |
-| `yolo_enabled` | Auto-approve safe commands during roam. See [How yolo decides](#how-yolo-decides). |
+| `yolo_enabled` | Default: auto-approve safe commands during roam. See [How yolo decides](#how-yolo-decides). Override per-session via `/roam:yolo` without editing config. |
 | `honorClaudeAllowList` | Also auto-approve anything in your `~/.claude/settings.json` `permissions.allow` list during yolo. Default `true`. |
 | `autoDetectLocalUse` | When you're typing on the machine while roam is active, softly suggest `/roam:off`. |
 | `autoDetectSnoozeMinutes` | Minimum gap between local-use reminders so it doesn't nag. |
@@ -125,7 +125,11 @@ Located at `~/.claude/roam/config.json`. Edit via `/roam:config` or directly:
 
 ## How yolo decides
 
-When `yolo_enabled: true` and roam is active, roam's `PreToolUse` hook inspects every Bash command and returns one of these decisions:
+Yolo has two scopes:
+- **Config default** (`yolo_enabled` in `config.json`) — applies whenever you enter roam. Edit via `/roam:config`.
+- **Session override** (`/roam:yolo`) — flip for the current active roam without changing the default. Useful for "I'm going on a long walk, yolo this one" vs "quick coffee, keep normal prompts."
+
+When yolo is effectively on (either scope) and roam is active, roam's `PreToolUse` hook inspects every Bash command and returns one of these decisions:
 
 1. **Hard-deny → prompts normally** (universal security patterns, never bypassable):
    - Shell interpreters with inline code: `bash -c`, `sh -c`, `zsh -c`, `sudo`, `doas`
