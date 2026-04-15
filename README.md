@@ -20,6 +20,17 @@ This plugin flips exactly the two things you need (and nothing else): blocks lid
 - **Battery guard** — auto-exits below 10% (configurable), sends notification.
 - **Watchdog LaunchAgent** — polls every 60s, cleans up if Claude Code crashes mid-session.
 
+## Vanilla Claude Code experience
+
+If you don't have `bash-smart-approve` or any custom allowlists, first-run on a fresh machine shows you:
+
+1. **One permission dialog** — "Add `Bash(~/.claude/roam/bin/roam-cli:*)` to settings?" (recommended: yes). After this, every roam subcommand runs silently for the life of the install.
+2. **One sudo password prompt** — for the `pmset` call that blocks lid-close sleep. A one-liner (see TouchID tip below) replaces this with a fingerprint tap on Apple Silicon.
+
+That's it. Subsequent `/roam` invocations: silent (or a TouchID tap, if configured).
+
+If you say *no* to the permission rule, you'll see Claude Code's per-subcommand approval dialog each time — still usable, just noisier.
+
 ## What it does *not* do
 
 - **Does not auto-switch Wi-Fi.** Security + Location Services prompt on Sonoma + enterprise VPN breakage + spoofable SSIDs make this a bad idea. Roam only *reminds* you to tap the hotspot in your wifi menu.
