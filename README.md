@@ -1,6 +1,6 @@
 # claude-code-roam
 
-**Mobile mode for Claude Code.** Keep your laptop awake while you're on the road, get a push notification when Claude needs you, and optionally run in a constrained "yolo" mode where safe commands auto-approve but prod-capable tools (`aws`, `stripe`, `deploy`, ...) stay gated.
+**Mobile mode for Claude Code.** Keep your laptop awake while you're on the road, get a push notification when Claude needs you, and optionally run in a constrained "yolo" mode where a small set of read-only dev commands auto-approve so your agents don't stall while you're away.
 
 ## The problem, in plain English
 
@@ -16,7 +16,7 @@ This plugin flips exactly the two things you need (and nothing else): blocks lid
 - **Status-line indicator** — 🎒 appears in Claude Code's bottom bar when roam is on. Integrates with your existing status line (patch or wrap), or installs a minimal one.
 - **Push notification on Stop** — when Claude stops for input during roam and you're not actively typing, macOS sends a notification.
 - **Auto-detect local use** — if you're typing on the device directly (lid open, active HID input, not over SSH), roam reminds you it might not be needed. Once per 15 min, non-blocking.
-- **Constrained yolo** (optional) — safe commands auto-approve so Claude doesn't stall while you're away. Hard-denies universal security patterns (shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches). You can extend the deny list with your own domain-specific tools via `deniedPatterns` in the config.
+- **Constrained yolo** (optional) — a small hardcoded set of read-only dev tools auto-approves (git, ls, cat, grep, node/npm build commands, etc.) so Claude doesn't stall on routine work. Anything outside that set still prompts. Universal security patterns (shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches) always prompt regardless. See **How yolo decides** below for the full lists.
 - **Battery guard** — auto-exits below 10% (configurable), sends notification.
 - **Watchdog LaunchAgent** — polls every 60s, cleans up if Claude Code crashes mid-session.
 
@@ -129,34 +129,53 @@ Every subsequent `/roam` is one command, zero prompts.
 
 Edit via `/roam:config` or directly. Kill switch: set `"enabled": false` (not shipped in the default schema; add the field if you want a persistent disable), or just don't run `/roam`.
 
-## Yolo hard-deny list (universal security patterns)
+## How yolo decides
 
-Even with yolo on, these **always** require manual approval. This list is deliberately generic — anything tool-specific (your cloud CLI, database shell, deployment script) belongs in the `deniedPatterns` field of *your* config, not in the plugin.
+When `yolo_enabled: true` and roam is active, the `PreToolUse` hook inspects every Bash command before Claude runs it and returns one of three decisions:
 
-- Shell interpreters with inline code: `bash -c`, `sh -c`, `zsh -c`, `sudo`, `doas`
-- `eval`, `source`, `.` (dot sourcing)
-- Pipe into shell: `… | bash`, `… | sh`
-- Inline-exec flags: `node -e`, `python -c`, `perl -e`, `ruby -e`, `php -r`, etc.
-- Recursive root/home deletion: `rm -rf /`, `rm -rf ~/`
-- Redirect-following HTTP: `curl -L`, `wget --location` (bypasses domain allowlists)
-- `git push` to `main` / `master` / `production` / `prod` / `release`
-- `git push --force`
+1. **Hard-deny (always prompts)** — the command matches a universal security pattern. Yolo never silently approves these, regardless of config:
 
-### Adding your own denies
+   - Shell interpreters with inline code: `bash -c`, `sh -c`, `zsh -c`, `sudo`, `doas`
+   - `eval`, `source`, `.` (dot sourcing)
+   - Pipe into shell: `… | bash`, `… | sh`
+   - Inline-exec flags: `node -e`, `python -c`, `perl -e`, `ruby -e`, `php -r`
+   - Recursive root/home deletion: `rm -rf /`, `rm -rf ~/`
+   - Redirect-following HTTP: `curl -L`, `wget --location`
+   - `git push` to `main` / `master` / `production` / `prod` / `release`
+   - `git push --force`
 
-The config has a `deniedPatterns` array for regex strings you want to always prompt on:
+2. **Auto-approve** — the first invoked binary is in the hardcoded safe set:
+
+   ```
+   ls   cat  head tail wc   file stat tree find
+   grep egrep fgrep rg  sed  awk  cut  sort uniq tr  tee
+   jq   yq
+   echo printf true false date pwd  basename dirname
+   mkdir touch readlink realpath
+   cd   test
+   diff patch cmp
+   git          (everything except push to protected branches / --force)
+   node npm npx pnpm yarn
+   make
+   ```
+
+   This set is **hardcoded** and deliberately minimal — dev-loop tools that read files, query state, or build code. Adding to it in v0.1 requires forking the plugin; opening it up to user config is a v0.2 consideration because a user-defined safe set is an easy footgun.
+
+3. **Prompt** — anything else. This includes every binary not listed above (cloud CLIs, database shells, deployment tools, your own scripts, etc.). Yolo treats "unknown" the same as "unsafe" — it doesn't pre-approve tools it hasn't vetted. Claude's execution pauses on the normal permission dialog until you respond from your phone or desk.
+
+### Customising denies
+
+Use `deniedPatterns` (regex array in the config) when you want to block something that the safe set *would* approve. For example, auto-approve `git` generally but prompt on `git reset --hard`:
 
 ```json
 {
   "deniedPatterns": [
-    "(^|\\s)aws\\s",
-    "(^|\\s)kubectl\\s",
-    "(^|\\s)(mongosh|psql|mysql)\\s"
+    "git\\s+reset\\s+--hard"
   ]
 }
 ```
 
-Anything matching → prompted, even in yolo.
+A `deniedPatterns` match overrides the safe-set auto-approve → prompts normally.
 
 ## Safety rails (cannot be disabled)
 
