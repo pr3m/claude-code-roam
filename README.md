@@ -1,5 +1,9 @@
 # claude-code-roam
 
+![platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue) ![status](https://img.shields.io/badge/status-v0.1%20alpha-orange) ![license](https://img.shields.io/badge/license-MIT-green)
+
+> **macOS only (v0.1).** Windows and Linux support is on the v0.2 roadmap — see [Contributing](#contributing). Installing on other platforms will fail fast with a clear message.
+
 **Mobile mode for Claude Code.** Keep your laptop awake while you're on the road, get a push notification when Claude needs you, and optionally run in a constrained "yolo" mode where a small set of read-only dev commands auto-approve so your agents don't stall while you're away.
 
 ## The problem, in plain English

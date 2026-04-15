@@ -8,7 +8,7 @@
     {
       "name": "roam",
       "source": "./plugins/roam",
-      "description": "Mobile mode for Claude Code — keep awake, optional constrained yolo, status-line indicator, and a push notification when Claude needs you",
+      "description": "Mobile mode for Claude Code (macOS only, v0.1) — keep awake, optional constrained yolo, status-line indicator, push notification when Claude needs you",
       "version": "0.1.0"
     }
   ]
