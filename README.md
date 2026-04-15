@@ -43,7 +43,7 @@ This plugin flips exactly the two things you need (and nothing else): blocks lid
 /roam:install
 ```
 
-The third step runs the bundled installer — it integrates with your status line (with approval) and registers the watchdog LaunchAgent. It never modifies `/etc/pam.d/` or touches `sudo` config.
+The third step runs the bundled installer — it offers to add a single permission rule (`Bash(~/.claude/roam/bin/roam-cli:*)`) to your Claude Code settings, registers the watchdog LaunchAgent, and integrates with your status line. After approving that one rule, all roam subcommands run silently — no per-subcommand prompts. The only remaining interaction is a one-time `sudo` password (or TouchID tap, see below) when you actually enter roam. It never modifies `/etc/pam.d/` or touches `sudo` config.
 
 ### TouchID for silent `/roam` (optional)
 

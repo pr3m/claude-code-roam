@@ -11,6 +11,17 @@ Most of what this skill does could happen lazily on first `/roam`, but running i
 
 If `~/.claude/roam/bin/roam-cli` doesn't exist, the SessionStart hook hasn't fired. Tell user to restart Claude Code once and retry.
 
+## Step 1b — Permission rule (lets roam-cli run silently)
+
+Read `~/.claude/settings.json`. If `permissions.allow` does not already contain `Bash(~/.claude/roam/bin/roam-cli:*)`:
+
+Ask via `AskUserQuestion`:
+- Header: `Permissions`
+- Question: `Add allow rule for ~/.claude/roam/bin/roam-cli:* to your Claude Code settings? This removes per-subcommand approval prompts for all roam operations.`
+- Options: `Yes, add it (recommended)` / `No, skip`
+
+If Yes, use `Edit` to append to `permissions.allow` (merge with existing). Show the diff first. Never touch other fields.
+
 ## Step 2 — Install the watchdog
 
 ```sh

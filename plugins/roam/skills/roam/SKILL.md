@@ -15,6 +15,27 @@ If `~/.claude/roam/bin/roam-cli` doesn't exist yet, tell the user:
 
 Then stop. (This only happens on the very first install, before any SessionStart has fired.)
 
+## Step 1b — One-time permission rule (first run only)
+
+Read `~/.claude/settings.json`. If `permissions.allow` does NOT already contain `Bash(~/.claude/roam/bin/roam-cli:*)` (or the variant `Bash($HOME/.claude/roam/bin/roam-cli:*)`):
+
+Use `AskUserQuestion`:
+- Header: `Permissions`
+- Question: `Roam calls its helper ~/.claude/roam/bin/roam-cli for every operation. Add a one-time allow rule to your Claude Code settings so you're not asked per subcommand?`
+- Options:
+  - `Yes, add the rule (recommended)` / "One-time edit to ~/.claude/settings.json — roam subcommands run silently after this"
+  - `No, prompt me each time` / "Keep the default — you'll see Claude Code's permission dialog for each distinct subcommand"
+
+**If user picks Yes**: use the `Edit` tool on `~/.claude/settings.json`.
+- If `permissions.allow` is an existing array → append `"Bash(~/.claude/roam/bin/roam-cli:*)"` (merge, don't replace).
+- If `permissions` doesn't exist → create `"permissions": {"allow": ["Bash(~/.claude/roam/bin/roam-cli:*)"]}`.
+
+Do NOT edit any other field in settings.json. Show the user the precise change before applying.
+
+**If user picks No**: continue — they'll see per-subcommand prompts.
+
+Skip this whole step on subsequent runs (rule already present).
+
 ## Step 2 — Check config
 
 ```sh
