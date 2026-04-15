@@ -29,8 +29,6 @@ cat > "$PLIST" <<EOF
   </array>
   <key>StartInterval</key>
   <integer>60</integer>
-  <key>RunAtLoad</key>
-  <true/>
   <key>StandardOutPath</key>
   <string>$(roam_data_dir)/watchdog.out</string>
   <key>StandardErrorPath</key>
@@ -39,6 +37,9 @@ cat > "$PLIST" <<EOF
 </plist>
 EOF
 
-# Reload without failing if not loaded yet.
-launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load "$PLIST" 2>/dev/null || true
+# Load only if not already loaded. Avoids the common case where /roam enter
+# reloads the watchdog, which would fire an immediate poll (via the scheduler's
+# initial tick) and race with state.json being written moments earlier.
+if ! launchctl list 2>/dev/null | awk '{print $3}' | grep -qx "$LABEL"; then
+  launchctl load "$PLIST" 2>/dev/null || true
+fi

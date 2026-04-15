@@ -90,8 +90,14 @@ roam_active() {
 }
 
 roam_pid_alive() {
+  # "Is roam actually still doing its job?" — the answer is "is the
+  # caffeinate keep-awake process still running?", NOT "is the shell
+  # that launched roam still alive?" (which dies the moment roam-enter.sh
+  # returns control to Claude Code). Caffeinate is the long-lived
+  # process we forked; if the OS killed it or the user killed it, roam
+  # is effectively dead and the watchdog should clean up.
   local pid
-  pid="$(roam_state_read '.pid')"
+  pid="$(roam_state_read '.caffeinate_pid')"
   [ -n "$pid" ] || return 1
   kill -0 "$pid" 2>/dev/null
 }

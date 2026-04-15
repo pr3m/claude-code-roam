@@ -104,8 +104,10 @@ cat > "$STATE_FILE" <<EOF
 }
 EOF
 
-# --- Start watchdog (idempotent) ---
+# --- Ensure watchdog is loaded (install-watchdog.sh is itself idempotent and
+#     non-disruptive — it only loads the LaunchAgent if not already running).
 
+# --- Ensure watchdog is running ---
 bash "$SELF_DIR/install-watchdog.sh" >/dev/null 2>&1 || true
 
 # --- Output ---
