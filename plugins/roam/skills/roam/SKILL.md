@@ -49,24 +49,50 @@ Run:
 "$PLUGIN_ROOT/bin/wait-for-hotspot.sh" 0 1
 ```
 
-A `0`-second timeout means "check once and exit". Parse the 3-line output (`kind=`, `ssid=`, `gateway=`). Exit `0` = detected; exit `1` = not on a hotspot right now.
+A `0`-second timeout means "check once and exit". Parse the 3-line output (`kind=`, `ssid=`, `gateway=`).
 
-### 3b-A. Already on a phone hotspot — confirm (use `AskUserQuestion`)
+Also independently capture the CURRENT SSID (even if not a detected hotspot) — you'll need it for the trust-override branch:
 
-Header: `Hotspot`. Question: `Detected <kind> hotspot "<ssid>" (gateway <ip>). Save as your roam hotspot?`. Options:
-- `Save as roam default` / "Use this hotspot every time you /roam"
-- `Use a different one` / "I'll switch to the hotspot I actually want, then you detect it"
-- `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
+```sh
+CURRENT_SSID="$(ipconfig getsummary en0 2>/dev/null | awk -F ' SSID : ' '/ SSID : / {print $2; exit}')"
+CURRENT_GW="$(route -n get default 2>/dev/null | awk '/gateway:/ {print $2; exit}')"
+```
 
-If user picks **Save** → go to Step 3c.
-If user picks **Use a different one** → continue to Step 3b-B (wait loop).
-If user picks **Skip** → set `hotspot_ssid: ""` in config and go to Step 3c.
+### 3b — Branch on detection result
 
-### 3b-B. Not on a hotspot (or want a different one) — scan mode
+**A) Recognized phone hotspot detected (iOS / Android / Windows gateway)** — use `AskUserQuestion`:
+
+- Header: `Hotspot`
+- Question: `Detected <kind> hotspot "<ssid>" (gateway <ip>). Save as your roam hotspot?`
+- Options:
+  - `Save as roam default` / "Use this hotspot every time you /roam"
+  - `Use a different one` / "I'll switch to the hotspot I actually want, then you detect it" → goes to scan mode (3b-C)
+  - `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
+
+**B) On a network, but NOT a recognized hotspot (regular Wi-Fi or unknown gateway)** — use `AskUserQuestion` with trust-override:
+
+- Header: `Hotspot`
+- Question: `You're on "<CURRENT_SSID>" (gateway <CURRENT_GW>). This doesn't match the usual phone-hotspot gateway ranges — it looks like regular Wi-Fi. Roam needs mobile coverage (phone hotspot / MiFi / travel router) to be useful. What do you want to do?`
+- Options:
+  - `Save "<CURRENT_SSID>" anyway — I know it's mobile` / "Trust override: this is a MiFi, travel router, or phone hotspot with a non-default gateway"
+  - `Scan for a phone hotspot instead` / "I'll connect to my phone's hotspot now — detect when I do" → goes to scan mode (3b-C)
+  - `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
+
+The trust-override option saves `CURRENT_SSID` directly. No typing, but still one click to confirm intent.
+
+**C) No network at all** (`kind=none`, no SSID) — use `AskUserQuestion`:
+
+- Header: `Hotspot`
+- Question: `You're not connected to any network. Connect to your roam hotspot so I can detect it.`
+- Options:
+  - `Start scanning` / "Connect to the hotspot in the next 2 minutes; I'll detect automatically" → goes to scan mode (3b-C)
+  - `Skip` / "Don't track a hotspot for now"
+
+### 3b-C. Scan mode (wait for user to connect to a hotspot)
 
 Tell the user in plain chat:
 
-> 📱 Turn on Personal Hotspot on the phone you want to use with roam, and connect this Mac to it. I'll detect it automatically (waiting up to 2 minutes). Cancel any time with Ctrl-C.
+> 📱 Turn on Personal Hotspot on the phone (or MiFi / travel router) you want to use with roam, and connect this Mac to it. I'll detect it automatically (waiting up to 2 minutes). Cancel any time with Ctrl-C.
 
 Then run:
 
@@ -74,10 +100,10 @@ Then run:
 "$PLUGIN_ROOT/bin/wait-for-hotspot.sh" 120 2
 ```
 
-This polls every 2 seconds for up to 2 minutes. Exit codes:
-- `0` — detected → parse output, confirm via `AskUserQuestion` (Header: `Hotspot`, Question: `Detected <kind> hotspot "<ssid>". Save it as your roam hotspot?`, Options: `Save` / `Keep waiting for a different one` (loop back) / `Skip`).
-- `1` — timeout → ask (Header: `Hotspot`, Options: `Try again` / `Skip for now`).
-- `130` — user cancelled → proceed without a saved hotspot.
+Exit codes:
+- `0` — recognized hotspot detected → parse output, confirm via `AskUserQuestion` (same options as 3b-A).
+- `1` — timeout → ask: `Try again` / `Use current network anyway (trust override)` / `Skip`. If user picks trust-override, re-read `CURRENT_SSID` now and save it.
+- `130` — user cancelled → proceed without a saved hotspot (`hotspot_ssid: ""`).
 
 ### 3c. Yolo (use `AskUserQuestion`)
 
