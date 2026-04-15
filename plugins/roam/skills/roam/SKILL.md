@@ -54,34 +54,29 @@ Classify the gateway:
 - `192.168.137.*` → **Windows Mobile Hotspot** (roam-friendly ✅)
 - Anything else → **regular Wi-Fi** (NOT roam-friendly — coverage ends at the door)
 
-### 3b. Ask about hotspot (branch on 3a)
+### 3b. Ask about hotspot (MUST use `AskUserQuestion`)
 
-**If gateway indicates a phone/Windows hotspot**:
-> You're currently on **"<SSID>"** — this looks like a phone hotspot (gateway `<ip>`). Save it as your roam hotspot?
->   1. Yes, remember this
->   2. Type a different name
->   3. Skip — I'll manage Wi-Fi myself
+Always use the `AskUserQuestion` tool for these interactive prompts — not plain-text chat. Users expect a clickable dialog, not a numbered list they have to type into.
 
-**If gateway indicates regular Wi-Fi**:
-> You're currently on **"<SSID>"** — but the gateway `<ip>` suggests this is regular Wi-Fi, not a phone hotspot.
->
-> ⚠️ Saving regular Wi-Fi as your roam hotspot defeats the purpose of roam — you'll lose signal when you walk away from the router.
->
->   1. Type your **phone's hotspot name** (recommended)
->   2. Save `<current SSID>` anyway (I know what I'm doing)
->   3. Skip — I'll manage Wi-Fi myself
+**If gateway indicates a phone/Windows hotspot** — header: "Hotspot", question: `You're on "<SSID>" — this looks like a phone hotspot (gateway <ip>). Save as your roam hotspot?`, options:
+- `Yes, remember this` / "Use the current SSID as your phone's hotspot name"
+- `Type a different name` / "I'll tell you my actual hotspot SSID"
+- `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
 
-If user picks "type a different name", prompt for the SSID (no password — roam never auto-connects).
+**If gateway indicates regular Wi-Fi** — header: "Hotspot", question: `You're on "<SSID>" — gateway <ip> suggests this is regular Wi-Fi, not a phone hotspot. Saving it defeats the purpose of roam (you'll lose signal when you walk away). What do you want to do?`, options:
+- `Type phone's hotspot name` / "Recommended — I'll tell you my iPhone/Android hotspot SSID"
+- `Save "<current>" anyway` / "I know what I'm doing — save this as the roam hotspot"
+- `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
 
-### 3c. Yolo
+If user picks "type a different name" / "type phone's hotspot name", use `AskUserQuestion` again with `multiSelect: false` and a free-text affordance — or in plain chat, say: "What's your phone's hotspot name? (Settings → Personal Hotspot on iPhone, Hotspot & tethering on Android)". No password — roam never auto-connects.
 
-Ask:
+### 3c. Yolo (MUST use `AskUserQuestion`)
 
-> Enable yolo by default for future roam sessions?
->   1. No (recommended) — you'll still get prompted for anything non-read-only
->   2. Yes — safe commands auto-approve; universal security patterns (shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches) always require confirmation
+Header: "Yolo", question: `Enable yolo by default for future roam sessions?`, options:
+- `No (recommended)` / "Normal approval prompts while roaming"
+- `Yes` / "Auto-approve safe tools. Universal security patterns (shell escapes, eval, curl -L, rm -rf /, git push to protected branches) still require confirmation"
 
-Default **No**.
+Default is `No`. Don't pre-select; let the user choose.
 
 ### 3d. Write config
 
