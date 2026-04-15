@@ -52,7 +52,7 @@ cat > "$FAKE_ROAM/state.json" <<EOF
 {"version":1,"active":true,"pid":$$,"snapshot":{"disablesleep":0}}
 EOF
 OUT=$(HOME="$FAKE_HOME" bash "$SELF_DIR/roam-indicator.sh")
-[ "$OUT" = "🎒" ] && pass "indicator on active state → 🎒" || fail "indicator returned: '$OUT'"
+[ "$OUT" = "🎒 roam on" ] && pass "indicator on active state → '🎒 roam on'" || fail "indicator returned: '$OUT'"
 
 # 5. Indicator off (empty home, no state.json)
 EMPTY_HOME="$TMP/empty-home"

@@ -14,7 +14,7 @@ STATE_FILE="$(roam_state_file)"
 # Fast active check without jq: look for "active":true in the file.
 grep -q '"active":\s*true' "$STATE_FILE" 2>/dev/null || exit 0
 
-OUT='🎒'
+OUT='🎒 roam on'
 
 VERBOSE="$(roam_config_read '.statusLineVerbose')"
 if [ "$VERBOSE" = "true" ]; then
