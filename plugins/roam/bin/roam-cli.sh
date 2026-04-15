@@ -82,6 +82,7 @@ case "$CMD" in
 {
   "hotspot_ssid": $ssid_json,
   "yolo_enabled": $yolo,
+  "honorClaudeAllowList": true,
   "autoDetectLocalUse": true,
   "autoDetectSnoozeMinutes": 15,
   "batteryThreshold": 10,

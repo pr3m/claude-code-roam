@@ -8,7 +8,7 @@ You're working with Claude Code on a long task. You want to close the lid, throw
 
 This plugin flips exactly the two things you need (and nothing else): blocks lid-close sleep while active, and shows a 🎒 indicator so you always know it's on. When Claude stops for input, your phone gets a notification. When you're back at the desk and typing, roam quietly suggests you turn it off.
 
-> ⚠️ **Read before using**: closing a laptop with lid closed under sustained CPU in a padded backpack can cook your battery and warp the chassis. Roam requires AC power and auto-exits below 10% battery. If you value the machine, keep it cool — lid-open on a stand is safer than lid-closed in a bag.
+> ⚠️ **Read before using**: closing a laptop with lid closed under sustained CPU in a padded backpack heats the battery fast, regardless of power source. The watchdog auto-exits at 10% battery by default (configurable), but you're responsible for the thermals. If you value the machine, keep it cool — lid-open on a stand is safer than lid-closed in a bag. Plug in whenever you can.
 
 ## What it does
 
@@ -179,10 +179,10 @@ A `deniedPatterns` match overrides the safe-set auto-approve → prompts normall
 
 ## Safety rails (cannot be disabled)
 
-- **AC power required** — `/roam` refuses to enter if on battery
-- **Battery auto-exit** — watchdog force-exits below the threshold (default 10%)
+- **Battery auto-exit** — watchdog force-exits below the threshold (default 10%, configurable 5–30)
+- **Battery warning on entry** — if you enter roam on battery power, the banner surfaces the current % and the auto-exit threshold
 - **Crash recovery** — LaunchAgent watchdog cleans up stale state if Claude Code dies
-- **Hard-deny list** — prod-capable tools always prompt even in yolo
+- **Universal security hard-deny** — shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches always prompt in yolo
 
 ## Architecture
 

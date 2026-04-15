@@ -30,14 +30,16 @@ fi
 
 # --- Pre-flight checks ---
 
+# AC is a recommendation, not a requirement. The watchdog auto-exits at
+# the configured battery threshold (default 10%), so running on battery
+# is legitimate — e.g. "I was working on battery and decided to take a walk".
+# We just surface the current state so the user knows what they're in for.
+BATTERY_WARNING=""
 if ! roam_on_ac; then
-  cat <<EOF >&2
-❌ Roam requires AC power.
-
-Battery alone + lid closed + sustained CPU = thermal + battery damage risk.
-Plug in before running /roam.
-EOF
-  exit 4
+  BAT="$(roam_battery_pct)"
+  BAT_THRESH="$(roam_config_read '.batteryThreshold')"
+  BAT_THRESH="${BAT_THRESH:-10}"
+  BATTERY_WARNING="⚠️  You're on battery (${BAT:-?}%). Roam will auto-exit at ${BAT_THRESH}% to save your work. Plug in whenever you can — sustained CPU with the lid closed heats up fast regardless of power source."
 fi
 
 HOTSPOT_SSID="$(roam_config_read '.hotspot_ssid')"
@@ -112,7 +114,13 @@ if [ -n "$HOTSPOT_SSID" ] && [ "$CURRENT_SSID" != "$HOTSPOT_SSID" ]; then
 fi
 
 BAT="$(roam_battery_pct)"
-BAT_MSG="${BAT:-?}% on AC"
+if roam_on_ac; then
+  BAT_MSG="${BAT:-?}% on AC"
+  POWER_LINE="Sleep blocked · Watchdog running · Battery: $BAT_MSG"
+else
+  BAT_MSG="${BAT:-?}% on battery"
+  POWER_LINE="Sleep blocked · Watchdog running · Battery: $BAT_MSG"
+fi
 
 cat <<EOF
 
@@ -121,7 +129,8 @@ cat <<EOF
   → /remote-control   — control this session from your phone
   → /roam:off          — exit roam, resume normal sleep
 
-  Power: AC only · Sleep blocked · Watchdog running · Battery: $BAT_MSG
+  $POWER_LINE
 
+${BATTERY_WARNING}
 ${SSID_MATCH_MSG}
 EOF

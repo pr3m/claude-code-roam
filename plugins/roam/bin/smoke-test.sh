@@ -86,6 +86,36 @@ check "git push main"       ask   '"git push origin main"'
 check "git push --force"    ask   '"git push --force"'
 check "unknown binary"      ask   '"obscuretool --flag"'
 
+# --- User Claude Code allow rules integration ---
+# Synthesize a user settings.json and verify roam honors the allow list.
+USER_HOME_TMP=$(mktemp -d)
+mkdir -p "$USER_HOME_TMP/.claude"
+cat > "$USER_HOME_TMP/.claude/settings.json" <<JSON
+{"permissions":{"allow":["Bash(customtool:*)","Bash(myscript exact-match)"]}}
+JSON
+
+check_user_allow() {
+  local label="$1" expect="$2" cmd="$3"
+  local got
+  got=$(printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$cmd" \
+      | CLAUDE_PLUGIN_DATA="$TMP" HOME="$USER_HOME_TMP" node "$SELF_DIR/../hooks/yolo-gate.js" | extract)
+  [ "$got" = "$expect" ] && pass "user-allow: $label → $got" || fail "user-allow: $label → $got (expected $expect)"
+}
+
+check_user_allow "customtool matches Bash(customtool:*)"   allow '"customtool --foo"'
+check_user_allow "myscript matches exact rule"             allow '"myscript exact-match"'
+check_user_allow "myscript with args no longer matches"    ask   '"myscript something-else"'
+check_user_allow "env prefix stripped before match"        allow '"FOO=bar customtool --foo"'
+check_user_allow "user allow can't bypass hard-deny"       ask   '"bash -c \"rm -rf /\""'
+
+# Disable honorClaudeAllowList → user allow no longer applies
+cat > "$TMP/state.json" <<EOF
+{"version":1,"active":true,"pid":$$,"config_snapshot":{"hotspot_ssid":"t","yolo_enabled":true,"honorClaudeAllowList":false}}
+EOF
+check_user_allow "honorClaudeAllowList=false disables it"  ask   '"customtool --foo"'
+
+rm -rf "$USER_HOME_TMP"
+
 rm -rf "$TMP"
 
 echo

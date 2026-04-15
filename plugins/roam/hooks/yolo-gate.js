@@ -2,14 +2,20 @@
 /*
  * yolo-gate.js — PreToolUse hook for Bash when roam is active + yolo enabled.
  *
- * Contract:
- *   - If roam is OFF or yolo is OFF → exit 0 with no output → fall through to normal prompt.
- *   - If yolo is ON:
- *       - Hard-deny any command matching prod-tool patterns (aws/stripe/deploy/...).
- *       - Auto-approve only safe-pattern commands (read-only, git, node/npm build, etc.).
- *       - Anything uncertain → still prompts (no silent broadening).
+ * Decision order, in priority:
+ *   1. If roam is OFF or yolo is OFF → fall through (no output, exit 0).
+ *   2. Universal security hard-deny → ask (eval, sudo, bash -c, rm -rf /, …).
+ *   3. User-defined deniedPatterns (roam config regex list) → ask.
+ *   4. User's own Claude Code allow rules (~/.claude/settings.json +
+ *      project .claude/settings*.json), if honorClaudeAllowList: true → allow.
+ *   5. Roam's built-in safe set (git/ls/cat/grep/node/npm/…) → allow.
+ *   6. Everything else → ask.
  *
- * Parallels bash-smart-approve but simpler and scoped to roam's yolo window.
+ * The hook never overrides the user's settings.json `deny` rules — Claude
+ * Code enforces those independently. Hard-deny patterns can't be bypassed
+ * even if the user has the binary in their allow list: lid-closed unattended
+ * yolo + a rogue `sudo` in their allowlist is not a shape the plugin will
+ * silently enable.
  */
 
 'use strict';
@@ -94,10 +100,66 @@ function firstBinary(command) {
   const m = c.match(/^"?([^\s"'`|&;<>]+)"?/);
   if (!m) return null;
   let bin = m[1];
-  // Last path segment, strip .exe
   bin = path.basename(bin);
   if (bin.toLowerCase().endsWith('.exe')) bin = bin.slice(0, -4);
   return bin;
+}
+
+function normalizedCommand(command) {
+  // Strip env-var prefixes so matchers compare against the real invocation.
+  let c = String(command).trim();
+  while (/^[A-Z_][A-Z0-9_]*=\S+\s+/.test(c)) {
+    c = c.replace(/^[A-Z_][A-Z0-9_]*=\S+\s+/, '');
+  }
+  return c;
+}
+
+function loadUserBashAllowRules() {
+  // Collect Bash(...) allow-rule bodies from user + project settings files.
+  // Same layering semantics as Claude Code: user → project → local, union.
+  const sources = [
+    path.join(os.homedir(), '.claude', 'settings.json'),
+    path.join(process.cwd(), '.claude', 'settings.json'),
+    path.join(process.cwd(), '.claude', 'settings.local.json'),
+  ];
+  const out = [];
+  for (const src of sources) {
+    const j = readJson(src);
+    const list = j && j.permissions && Array.isArray(j.permissions.allow) ? j.permissions.allow : [];
+    for (const entry of list) {
+      if (typeof entry !== 'string') continue;
+      const m = entry.match(/^Bash\((.*)\)$/);
+      if (m) out.push(m[1]);
+    }
+  }
+  return out;
+}
+
+function matchesBashRule(normalizedCmd, rulePattern) {
+  // Claude Code Bash rule conventions:
+  //   Bash(git status)      → exact match: command must equal "git status"
+  //   Bash(git status:*)    → prefix match: starts with "git status"
+  //   Bash(git *)           → glob: any git subcommand
+  //   Bash(ls /tmp:*)       → prefix match: starts with "ls /tmp"
+  if (rulePattern.endsWith(':*')) {
+    const prefix = rulePattern.slice(0, -2);
+    return normalizedCmd === prefix || normalizedCmd.startsWith(prefix + ' ') || normalizedCmd.startsWith(prefix + '\t');
+  }
+  if (rulePattern.includes('*')) {
+    const escaped = rulePattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\*/g, '*'); // un-escape our wildcard placeholder (preceding escape also escapes *)
+    const re = new RegExp('^' + escaped.replace(/\*/g, '.*') + '$');
+    return re.test(normalizedCmd);
+  }
+  return normalizedCmd === rulePattern;
+}
+
+function matchesAnyUserAllow(normalizedCmd, rules) {
+  return rules.some((r) => {
+    try { return matchesBashRule(normalizedCmd, r); }
+    catch (_) { return false; }
+  });
 }
 
 function main() {
@@ -117,14 +179,14 @@ function main() {
   const command = parsed && parsed.tool_input && parsed.tool_input.command;
   if (typeof command !== 'string' || !command.length) fallthrough();
 
-  // Universal security hard-deny
+  // 1. Universal security hard-deny (never bypassable)
   for (const re of HARD_DENY_RE) {
     if (re.test(command)) {
       ask(`roam yolo: security pattern ${re} requires manual approval`);
     }
   }
 
-  // User-defined deniedPatterns from config
+  // 2. User-defined deniedPatterns (roam config)
   const userDenies = (state.config_snapshot && state.config_snapshot.deniedPatterns) || [];
   for (const pat of userDenies) {
     try {
@@ -134,15 +196,26 @@ function main() {
     } catch (_) { /* ignore malformed user regex */ }
   }
 
-  // Safe binary
+  const normalized = normalizedCommand(command);
+
+  // 3. User's own Claude Code allow rules (opt-out via config)
+  const honorUserAllow = !(state.config_snapshot && state.config_snapshot.honorClaudeAllowList === false);
+  if (honorUserAllow) {
+    const userAllow = loadUserBashAllowRules();
+    if (matchesAnyUserAllow(normalized, userAllow)) {
+      allow(`roam yolo: matches your Claude Code allow list`);
+    }
+  }
+
+  // 4. Roam's built-in safe set
   const bin = firstBinary(command);
   if (!bin) ask('roam yolo: could not identify binary');
   if (SAFE_BINARIES.has(bin)) {
-    allow(`roam yolo: '${bin}' is in the safe set`);
+    allow(`roam yolo: '${bin}' is in the built-in safe set`);
   }
 
-  // Unknown → prompt
-  ask(`roam yolo: '${bin}' not in safe set — prompting for review`);
+  // 5. Unknown → prompt
+  ask(`roam yolo: '${bin}' not in safe set or user allow list — prompting`);
 }
 
 try { main(); } catch (_) { fallthrough(); }

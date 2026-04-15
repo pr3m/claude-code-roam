@@ -132,10 +132,9 @@ Tell the user: "Saved. Next `/roam` is one command."
 ```
 
 Show output verbatim. Exit codes:
-- `0` → success
+- `0` → success (banner printed by the script will include a battery warning if on battery — pass it through verbatim)
 - `2` → unsupported platform (macOS-only in v0.1)
 - `3` → config missing (shouldn't happen after Step 4; loop back to Step 3)
-- `4` → on battery → tell user: "Plug in first, then try again"
 - `5` → sudo declined → tell user: "Roam needs one-time sudo to block lid-close sleep. Re-run `/roam` when ready"
 - `6` → pmset failed
 
