@@ -79,9 +79,8 @@ case "$CMD" in
     printf '%s\n' "$(roam_default_gateway)"
     ;;
   check-config)
-    # Exits 0 if config.json exists under the plugin's data dir, 1 otherwise.
-    # Outputs the resolved config path on success.
-    data_dir="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/roam}"
+    # Exits 0 if config.json exists, 1 otherwise. Outputs the config path.
+    data_dir="$HOME/.claude/roam"
     cfg="$data_dir/config.json"
     if [ -f "$cfg" ]; then
       printf '%s\n' "$cfg"
@@ -91,7 +90,7 @@ case "$CMD" in
     ;;
   write-config)
     # write-config <ssid> <yolo-bool>
-    data_dir="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/roam}"
+    data_dir="$HOME/.claude/roam"
     mkdir -p "$data_dir"
     ssid_json="$(printf '%s' "${1:-}" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>process.stdout.write(JSON.stringify(d)))')"
     yolo="${2:-false}"

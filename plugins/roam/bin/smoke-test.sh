@@ -39,27 +39,34 @@ pass "on ac = $(roam_on_ac && echo yes || echo no)"
 pass "lid = $(roam_lid_open && echo open || echo closed)"
 pass "hid idle = $(roam_hid_idle_seconds)s"
 
-# 4. Indicator with fake active state
+# State for tests lives under a fake HOME so we never touch the real
+# ~/.claude/roam. Setting HOME makes roam_data_dir and the Node hooks
+# agree on the location without needing any test-specific env var.
 TMP=$(mktemp -d)
-cat > "$TMP/state.json" <<EOF
+FAKE_HOME="$TMP/fake-home"
+FAKE_ROAM="$FAKE_HOME/.claude/roam"
+mkdir -p "$FAKE_ROAM"
+
+# 4. Indicator with fake active state
+cat > "$FAKE_ROAM/state.json" <<EOF
 {"version":1,"active":true,"pid":$$,"snapshot":{"disablesleep":0}}
 EOF
-OUT=$(CLAUDE_PLUGIN_DATA="$TMP" bash "$SELF_DIR/roam-indicator.sh")
+OUT=$(HOME="$FAKE_HOME" bash "$SELF_DIR/roam-indicator.sh")
 [ "$OUT" = "🎒" ] && pass "indicator on active state → 🎒" || fail "indicator returned: '$OUT'"
-rm -rf "$TMP"
 
-# 5. Indicator off
-OUT=$(CLAUDE_PLUGIN_DATA="/tmp/roam-nothing-here-$$" bash "$SELF_DIR/roam-indicator.sh")
+# 5. Indicator off (empty home, no state.json)
+EMPTY_HOME="$TMP/empty-home"
+mkdir -p "$EMPTY_HOME/.claude/roam"
+OUT=$(HOME="$EMPTY_HOME" bash "$SELF_DIR/roam-indicator.sh")
 [ -z "$OUT" ] && pass "indicator with no state → empty" || fail "indicator leaked: '$OUT'"
 
 # 6. Yolo gate — roam off
 OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"aws s3 ls"}}' \
-      | CLAUDE_PLUGIN_DATA="/tmp/roam-nothing-here-$$" node "$SELF_DIR/../hooks/yolo-gate.js")
+      | HOME="$EMPTY_HOME" node "$SELF_DIR/../hooks/yolo-gate.js")
 [ -z "$OUT" ] && pass "yolo gate falls through when roam off" || fail "yolo gate leaked: $OUT"
 
 # 7. Yolo gate — yolo on with test cases
-TMP=$(mktemp -d)
-cat > "$TMP/state.json" <<EOF
+cat > "$FAKE_ROAM/state.json" <<EOF
 {"version":1,"active":true,"pid":$$,"config_snapshot":{"hotspot_ssid":"test","yolo_enabled":true}}
 EOF
 
@@ -68,7 +75,7 @@ extract() { node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try
 check() {
   local label="$1" expect="$2" cmd="$3"
   local got
-  got=$(printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$cmd" | CLAUDE_PLUGIN_DATA="$TMP" node "$SELF_DIR/../hooks/yolo-gate.js" | extract)
+  got=$(printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$cmd" | HOME="$FAKE_HOME" node "$SELF_DIR/../hooks/yolo-gate.js" | extract)
   [ "$got" = "$expect" ] && pass "yolo: $label → $got" || fail "yolo: $label → $got (expected $expect)"
 }
 
@@ -87,10 +94,9 @@ check "git push --force"    ask   '"git push --force"'
 check "unknown binary"      ask   '"obscuretool --flag"'
 
 # --- User Claude Code allow rules integration ---
-# Synthesize a user settings.json and verify roam honors the allow list.
-USER_HOME_TMP=$(mktemp -d)
-mkdir -p "$USER_HOME_TMP/.claude"
-cat > "$USER_HOME_TMP/.claude/settings.json" <<JSON
+# Put a fake settings.json in the fake HOME so yolo-gate can read it.
+mkdir -p "$FAKE_HOME/.claude"
+cat > "$FAKE_HOME/.claude/settings.json" <<JSON
 {"permissions":{"allow":["Bash(customtool:*)","Bash(myscript exact-match)"]}}
 JSON
 
@@ -98,7 +104,7 @@ check_user_allow() {
   local label="$1" expect="$2" cmd="$3"
   local got
   got=$(printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$cmd" \
-      | CLAUDE_PLUGIN_DATA="$TMP" HOME="$USER_HOME_TMP" node "$SELF_DIR/../hooks/yolo-gate.js" | extract)
+      | HOME="$FAKE_HOME" node "$SELF_DIR/../hooks/yolo-gate.js" | extract)
   [ "$got" = "$expect" ] && pass "user-allow: $label → $got" || fail "user-allow: $label → $got (expected $expect)"
 }
 
@@ -109,12 +115,12 @@ check_user_allow "env prefix stripped before match"        allow '"FOO=bar custo
 check_user_allow "user allow can't bypass hard-deny"       ask   '"bash -c \"rm -rf /\""'
 
 # Disable honorClaudeAllowList → user allow no longer applies
-cat > "$TMP/state.json" <<EOF
+cat > "$FAKE_ROAM/state.json" <<EOF
 {"version":1,"active":true,"pid":$$,"config_snapshot":{"hotspot_ssid":"t","yolo_enabled":true,"honorClaudeAllowList":false}}
 EOF
 check_user_allow "honorClaudeAllowList=false disables it"  ask   '"customtool --foo"'
 
-rm -rf "$USER_HOME_TMP"
+rm -rf "$TMP"
 
 rm -rf "$TMP"
 

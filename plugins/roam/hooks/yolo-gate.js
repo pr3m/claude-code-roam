@@ -41,7 +41,9 @@ const deny = (r) => emit('deny', r);
 function fallthrough() { process.exit(0); }
 
 function dataDir() {
-  return process.env.CLAUDE_PLUGIN_DATA || path.join(os.homedir(), '.claude', 'roam');
+  // Keep parity with bin/helpers.sh — always $HOME/.claude/roam, never
+  // CLAUDE_PLUGIN_DATA, so writers and readers never split across paths.
+  return path.join(os.homedir(), '.claude', 'roam');
 }
 function stateFile() { return path.join(dataDir(), 'state.json'); }
 

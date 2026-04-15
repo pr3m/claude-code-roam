@@ -7,13 +7,13 @@ set -u
 # --- Paths ---
 
 roam_data_dir() {
-  # Prefer CLAUDE_PLUGIN_DATA, else a stable fallback so watchdog (which has
-  # no CLAUDE_PLUGIN_DATA) can find state.
-  if [ -n "${CLAUDE_PLUGIN_DATA:-}" ]; then
-    printf '%s\n' "$CLAUDE_PLUGIN_DATA"
-  else
-    printf '%s\n' "$HOME/.claude/roam"
-  fi
+  # Always use a stable path under $HOME/.claude/roam/ regardless of context.
+  # CLAUDE_PLUGIN_DATA is set for hooks but not always for skill-invoked Bash
+  # calls, and the LaunchAgent watchdog never has it — using it would split
+  # state across multiple locations and cause "roam is already on / already
+  # off" inconsistencies. Pinning to $HOME/.claude/roam keeps every writer
+  # and reader in agreement.
+  printf '%s\n' "$HOME/.claude/roam"
 }
 
 roam_state_file() { printf '%s/state.json\n' "$(roam_data_dir)"; }
