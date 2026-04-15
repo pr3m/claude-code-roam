@@ -44,26 +44,28 @@ function readJson(p) {
   catch (_) { return null; }
 }
 
-// Hard-deny patterns — never auto-approved in yolo mode.
-// Applied against the full command string.
+// Universal hard-deny patterns — never auto-approved in yolo mode, regardless
+// of domain. Keep this list UNIVERSAL (security, not opinion about tools):
+// anything tool-specific (aws, stripe, kubectl, etc.) belongs in the user's
+// own `deniedPatterns` config, not baked into a community plugin.
 const HARD_DENY_RE = [
-  /(^|\s)(aws|aws-vault)\b/,
-  /(^|\s)stripe\b/,
-  /(^|\s)firebase\b/,
-  /(^|\s)kubectl\b/,
-  /docker\s+(push|login|run|exec|stop|kill|rm)\b/,
-  /(^|\s)wunda-(deploy|release)\b/,
-  /(^|\s)mongosh\b/,
-  /(^|\s)(psql|mysql|redis-cli)\b/,
-  // Avoid matching inside file paths ("git diff deploy.md") — only flag as a standalone token
-  /(^|\s)(deploy|prod|production|release)(\s|$)/i,
-  // Shell escape / interpreter
-  /(^|\s)(bash|sh|zsh|sudo|xargs|env)\s+-c\b/,
+  // Shell interpreters with inline code
+  /(^|\s)(bash|sh|zsh|ksh|dash|fish)\s+-c\b/,
+  /(^|\s)sudo\b/,
+  /(^|\s)doas\b/,
   /(^|\s)eval\b/,
-  /\brm\s+-rf\s+\//,
-  /curl\s+-L\b/,
-  /\|\s*(bash|sh|zsh)\b/,
-  /git\s+push\b.*\b(main|master|production|prod)\b/,
+  /(^|\s)(source|\.)\s+/,
+  // Pipe into shell (classic one-liner attack vector)
+  /\|\s*(bash|sh|zsh|ksh|dash|fish)\b/,
+  // Inline-exec flags on interpreters
+  /(^|\s)(node|python|python3|python2|py|deno|bun|perl|ruby|php)\s+(-c|-e|--eval|-r)\b/,
+  // Recursive filesystem destruction starting from root or HOME
+  /\brm\s+(-[rRfF]+\s+)+(\/|~\/?|\$HOME\/?)(\s|$)/,
+  // Following redirects — can bypass domain allowlists elsewhere
+  /(^|\s)(curl|wget)\s+[^#\n]*(-L\b|--location\b)/,
+  // Git force-push / push to protected branches
+  /git\s+push\b.*(\s|=)(main|master|production|prod|release)(\s|$)/,
+  /git\s+push\b.*--force\b/,
 ];
 
 // Safe patterns — auto-approved in yolo mode.
@@ -115,12 +117,21 @@ function main() {
   const command = parsed && parsed.tool_input && parsed.tool_input.command;
   if (typeof command !== 'string' || !command.length) fallthrough();
 
-  // Hard-deny regex
+  // Universal security hard-deny
   for (const re of HARD_DENY_RE) {
     if (re.test(command)) {
-      // Don't hard-deny — just surface the prompt for human review.
-      ask(`roam yolo: pattern ${re} requires manual approval`);
+      ask(`roam yolo: security pattern ${re} requires manual approval`);
     }
+  }
+
+  // User-defined deniedPatterns from config
+  const userDenies = (state.config_snapshot && state.config_snapshot.deniedPatterns) || [];
+  for (const pat of userDenies) {
+    try {
+      if (new RegExp(pat).test(command)) {
+        ask(`roam yolo: user-defined deny /${pat}/`);
+      }
+    } catch (_) { /* ignore malformed user regex */ }
   }
 
   // Safe binary

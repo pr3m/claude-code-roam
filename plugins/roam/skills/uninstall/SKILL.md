@@ -9,12 +9,12 @@ Reverse what `/roam:install` + `/roam` left behind. Confirms at each step.
 
 ## Step 1 — Ensure roam is off
 
-If roam is currently active (`bash $CLAUDE_PLUGIN_ROOT/plugins/roam/bin/roam-status.sh` shows "ON"), invoke `/roam:off` first.
+Read plugin root: `PLUGIN_ROOT="$(cat ~/.claude/roam/plugin-root 2>/dev/null)"`. If roam is currently active (`"$PLUGIN_ROOT/bin/roam-status.sh"` shows "ON"), invoke `/roam:off` first.
 
 ## Step 2 — Remove the watchdog
 
 ```sh
-bash "$CLAUDE_PLUGIN_ROOT/plugins/roam/bin/uninstall-watchdog.sh"
+"$PLUGIN_ROOT/bin/uninstall-watchdog.sh"
 ```
 
 ## Step 3 — Restore status line

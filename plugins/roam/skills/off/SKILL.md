@@ -7,10 +7,20 @@ description: Exit roam — restore sleep settings and stop the keep-awake. Use w
 
 Revert to normal sleep behavior and clean up state.
 
-## Step 1 — Invoke exit
+## Step 1 — Find plugin root
 
 ```sh
-bash "$CLAUDE_PLUGIN_ROOT/plugins/roam/bin/roam-exit.sh"
+PLUGIN_ROOT="$(cat ~/.claude/roam/plugin-root 2>/dev/null)"
+[ -n "$PLUGIN_ROOT" ] && [ -x "$PLUGIN_ROOT/bin/roam-exit.sh" ] || {
+  echo "Plugin path not registered. Restart Claude Code once."
+  exit 1
+}
+```
+
+## Step 2 — Invoke exit
+
+```sh
+"$PLUGIN_ROOT/bin/roam-exit.sh"
 ```
 
 Show the output verbatim.

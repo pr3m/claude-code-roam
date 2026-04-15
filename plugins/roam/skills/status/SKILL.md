@@ -10,7 +10,8 @@ Print the current roam state + config.
 ## Step 1
 
 ```sh
-bash "$CLAUDE_PLUGIN_ROOT/plugins/roam/bin/roam-status.sh"
+PLUGIN_ROOT="$(cat ~/.claude/roam/plugin-root 2>/dev/null)"
+"$PLUGIN_ROOT/bin/roam-status.sh"
 ```
 
 Show the output verbatim.

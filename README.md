@@ -16,7 +16,7 @@ This plugin flips exactly the two things you need (and nothing else): blocks lid
 - **Status-line indicator** — 🎒 appears in Claude Code's bottom bar when roam is on. Integrates with your existing status line (patch or wrap), or installs a minimal one.
 - **Push notification on Stop** — when Claude stops for input during roam and you're not actively typing, macOS sends a notification.
 - **Auto-detect local use** — if you're typing on the device directly (lid open, active HID input, not over SSH), roam reminds you it might not be needed. Once per 15 min, non-blocking.
-- **Constrained yolo** (optional) — safe commands auto-approve so Claude doesn't stall while you're away. Hard-denies any command touching `aws`, `stripe`, `firebase`, `kubectl`, `wunda-deploy`, `mongosh`, `psql`, `mysql`, or containing `deploy`/`prod`/`release`.
+- **Constrained yolo** (optional) — safe commands auto-approve so Claude doesn't stall while you're away. Hard-denies universal security patterns (shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches). You can extend the deny list with your own domain-specific tools via `deniedPatterns` in the config.
 - **Battery guard** — auto-exits below 10% (configurable), sends notification.
 - **Watchdog LaunchAgent** — polls every 60s, cleans up if Claude Code crashes mid-session.
 
@@ -101,13 +101,14 @@ Every subsequent `/roam` is one command, zero prompts.
 
 ```json
 {
-  "hotspot_ssid": "Christjan's iPhone",
+  "hotspot_ssid": "My iPhone",
   "yolo_enabled": false,
   "autoDetectLocalUse": true,
   "autoDetectSnoozeMinutes": 15,
   "batteryThreshold": 10,
   "thermalThreshold": 85,
-  "statusLineVerbose": false
+  "statusLineVerbose": false,
+  "deniedPatterns": []
 }
 ```
 
@@ -117,20 +118,34 @@ Every subsequent `/roam` is one command, zero prompts.
 
 Edit via `/roam:config` or directly. Kill switch: set `"enabled": false` (not shipped in the default schema; add the field if you want a persistent disable), or just don't run `/roam`.
 
-## Yolo hard-deny list
+## Yolo hard-deny list (universal security patterns)
 
-Even with yolo on, these **always** require manual approval:
+Even with yolo on, these **always** require manual approval. This list is deliberately generic — anything tool-specific (your cloud CLI, database shell, deployment script) belongs in the `deniedPatterns` field of *your* config, not in the plugin.
 
-- `aws`, `aws-vault`
-- `stripe`
-- `firebase`
-- `kubectl`
-- `docker push|login|run|exec|stop|kill|rm`
-- `wunda-deploy`, `wunda-release` (wunda-specific, will become a user-editable list)
-- `mongosh`, `psql`, `mysql`, `redis-cli`
-- Any command containing `deploy`, `prod`, `release`
-- `git push` to `main`/`master`/`prod`/`production`
-- Shell escape patterns: `bash -c`, `eval`, `rm -rf /`, `curl -L`, `... | bash`
+- Shell interpreters with inline code: `bash -c`, `sh -c`, `zsh -c`, `sudo`, `doas`
+- `eval`, `source`, `.` (dot sourcing)
+- Pipe into shell: `… | bash`, `… | sh`
+- Inline-exec flags: `node -e`, `python -c`, `perl -e`, `ruby -e`, `php -r`, etc.
+- Recursive root/home deletion: `rm -rf /`, `rm -rf ~/`
+- Redirect-following HTTP: `curl -L`, `wget --location` (bypasses domain allowlists)
+- `git push` to `main` / `master` / `production` / `prod` / `release`
+- `git push --force`
+
+### Adding your own denies
+
+The config has a `deniedPatterns` array for regex strings you want to always prompt on:
+
+```json
+{
+  "deniedPatterns": [
+    "(^|\\s)aws\\s",
+    "(^|\\s)kubectl\\s",
+    "(^|\\s)(mongosh|psql|mysql)\\s"
+  ]
+}
+```
+
+Anything matching → prompted, even in yolo.
 
 ## Safety rails (cannot be disabled)
 

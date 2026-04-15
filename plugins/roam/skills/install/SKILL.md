@@ -22,7 +22,8 @@ Confirm `$CLAUDE_PLUGIN_ROOT/plugins/roam/hooks/hooks.json` exists. If so, Claud
 ## Step 3 — Install watchdog LaunchAgent
 
 ```sh
-bash "$CLAUDE_PLUGIN_ROOT/plugins/roam/bin/install-watchdog.sh"
+PLUGIN_ROOT="$(cat ~/.claude/roam/plugin-root 2>/dev/null)"
+"$PLUGIN_ROOT/bin/install-watchdog.sh"
 ```
 
 Confirm by checking `~/Library/LaunchAgents/com.pr3m.roam.watchdog.plist` was created. Report success.

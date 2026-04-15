@@ -139,3 +139,40 @@ roam_ssh_session() {
   # Returns 0 if current process tree looks like an SSH session.
   [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_TTY:-}" ]
 }
+
+# --- Hotspot detection ---
+#
+# We need to tell apart a phone hotspot ("roam-friendly") from a regular Wi-Fi
+# network ("you'll lose signal 20 meters from the door"). Gateway IP is the
+# most reliable signal — phone hotspots use well-known default ranges.
+#
+#   iOS Personal Hotspot   → 172.20.10.1/28
+#   Android Hotspot        → 192.168.43.1  (default; some OEMs vary)
+#   Windows Mobile Hotspot → 192.168.137.1
+#
+# Returns one of: iphone, android, windows, unknown, none
+
+roam_default_gateway() {
+  # Prints the IPv4 default gateway, or empty string.
+  route -n get default 2>/dev/null | awk '/gateway:/ {print $2; exit}'
+}
+
+roam_hotspot_kind() {
+  local gw
+  gw="$(roam_default_gateway)"
+  case "$gw" in
+    172.20.10.*) printf 'iphone' ;;
+    192.168.43.*) printf 'android' ;;
+    192.168.137.*) printf 'windows' ;;
+    '') printf 'none' ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+roam_on_hotspot() {
+  # 0 = on a recognized phone/OS hotspot; 1 = not.
+  case "$(roam_hotspot_kind)" in
+    iphone|android|windows) return 0 ;;
+    *) return 1 ;;
+  esac
+}

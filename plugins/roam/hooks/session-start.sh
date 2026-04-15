@@ -1,11 +1,18 @@
 #!/bin/bash
 # session-start.sh — SessionStart hook. Emits banner when roam is active,
 # plus optional auto-detect nudge when the user appears to be at the desk.
+# Also writes a plugin-root sentinel so skills can find our scripts without
+# needing $CLAUDE_PLUGIN_ROOT (which is only available in hook commands).
 
 set -u
 BIN_DIR="$(cd "$(dirname "$0")/../bin" && pwd)"
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=../bin/helpers.sh
 . "$BIN_DIR/helpers.sh"
+
+# Always register the plugin root for skills to discover.
+mkdir -p "$HOME/.claude/roam"
+printf '%s\n' "$PLUGIN_ROOT" > "$HOME/.claude/roam/plugin-root"
 
 # No roam = silent hook (normal case).
 roam_active || exit 0
