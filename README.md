@@ -46,7 +46,10 @@ If you say *no* to the permission rule, you'll see Claude Code's per-subcommand 
 
 - macOS 14 (Sonoma) or newer, Apple Silicon or Intel
 - [Node.js](https://nodejs.org) 18+ (bundled with Claude Code on most installs)
-- `sudo` access for `pmset` (one-time password prompt per session; can be replaced with TouchID — see below)
+- `sudo` access for `pmset` — roam shows a native macOS password dialog (no terminal needed). Three ways to make it silent, in order of recommended simplicity:
+  1. **TouchID for sudo** (Apple Silicon) — one-line edit to `/etc/pam.d/sudo_local` (see [TouchID tip](#touchid-for-silent-roam-optional)).
+  2. **Sudoers rule for pmset only** — offered during `/roam:install`. Grants passwordless sudo for *exactly two* commands (`pmset -a disablesleep 0` / `1`). Nothing else.
+  3. **Default** — native GUI dialog every time. Works out of the box, just more clicks.
 
 ## Install
 

@@ -23,17 +23,15 @@ CAFFEINATE_PID="$(roam_state_read '.caffeinate_pid')"
 
 # --- Restore pmset ---
 
-if ! sudo -n true 2>/dev/null; then
-  printf '🔐 Roam needs sudo once to restore sleep settings.\n'
-  if ! sudo -v; then
-    printf '\n⚠️  sudo declined — state file preserved, re-run /roam:off when ready.\n' >&2
+if sudo -n pmset -a disablesleep "$ORIG_DISABLESLEEP" >/dev/null 2>&1; then
+  :
+else
+  export SUDO_ASKPASS="$SELF_DIR/sudo-askpass.sh"
+  if ! sudo -A pmset -a disablesleep "$ORIG_DISABLESLEEP" >/dev/null 2>&1; then
+    printf '⚠️  sudo declined — state file preserved, re-run /roam:off when ready.\n' >&2
     exit 5
   fi
 fi
-
-sudo pmset -a disablesleep "$ORIG_DISABLESLEEP" >/dev/null 2>&1 || {
-  printf '⚠️  pmset revert failed — check manually.\n' >&2
-}
 
 # --- Kill caffeinate ---
 

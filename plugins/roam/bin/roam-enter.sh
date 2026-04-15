@@ -51,20 +51,27 @@ ORIG_DISABLESLEEP="$(pmset -g | awk '/disablesleep/ {print $2; exit}')"
 ORIG_DISABLESLEEP="${ORIG_DISABLESLEEP:-0}"
 
 # --- Apply keep-awake ---
+#
+# sudo strategy (tries cheapest to most interactive, picks the first that works):
+#   1. sudo -n  — succeeds if the optional sudoers rule is installed
+#                 (/roam:install offers it) or the credential is cached.
+#   2. sudo -A  — with SUDO_ASKPASS pointing at sudo-askpass.sh. On Apple
+#                 Silicon with pam_tid configured, sudo shows TouchID first;
+#                 otherwise (or on fallback) the askpass GUI dialog appears.
+#                 No TTY required — works inside Claude Code's Bash tool.
+#   3. Fail with code 5 — only if -A is also declined.
 
-# Cache sudo credential (one prompt, 5-min cache).
-if ! sudo -n true 2>/dev/null; then
-  printf '🔐 Roam needs sudo once to block lid-close sleep.\n'
-  if ! sudo -v; then
-    printf '\n❌ sudo declined — roam not enabled.\n' >&2
+if sudo -n pmset -a disablesleep 1 >/dev/null 2>&1; then
+  :
+else
+  export SUDO_ASKPASS="$SELF_DIR/sudo-askpass.sh"
+  if ! sudo -A pmset -a disablesleep 1 >/dev/null 2>&1; then
+    printf '❌ sudo declined or cancelled — roam not enabled.\n' >&2
+    printf '   Tip: accept the one-time sudoers offer during /roam:install\n' >&2
+    printf '   to make all future /roam invocations silent.\n' >&2
     exit 5
   fi
 fi
-
-sudo pmset -a disablesleep 1 >/dev/null 2>&1 || {
-  printf '❌ Failed to set pmset disablesleep.\n' >&2
-  exit 6
-}
 
 # caffeinate with -w $PPID dies automatically when parent Claude Code process exits.
 # We set parent PID to Claude's PPID (the shell that spawned Claude) — but more

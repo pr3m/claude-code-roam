@@ -135,7 +135,7 @@ Show output verbatim. Exit codes:
 - `0` → success (banner printed by the script will include a battery warning if on battery — pass it through verbatim)
 - `2` → unsupported platform (macOS-only in v0.1)
 - `3` → config missing (shouldn't happen after Step 4; loop back to Step 3)
-- `5` → sudo declined → tell user: "Roam needs one-time sudo to block lid-close sleep. Re-run `/roam` when ready"
+- `5` → sudo declined or cancelled — the script handles the password prompt itself via a native macOS dialog (no terminal needed). If the user dismissed it, tell them: "Sudo prompt was cancelled. Run `/roam` again when you're ready, or accept the sudoers rule during `/roam:install` to skip the password entirely."
 - `6` → pmset failed
 
 ## Step 6 — Nudge toward remote-control
