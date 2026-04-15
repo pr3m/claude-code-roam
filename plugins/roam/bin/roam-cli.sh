@@ -41,6 +41,20 @@ case "$CMD" in
   watchdog-uninstall)
     exec "$SELF_DIR/uninstall-watchdog.sh" "$@"
     ;;
+  sudoers-install)
+    exec "$SELF_DIR/install-sudoers.sh" "$@"
+    ;;
+  sudoers-uninstall)
+    exec "$SELF_DIR/uninstall-sudoers.sh" "$@"
+    ;;
+  sudoers-status)
+    if [ -f /etc/sudoers.d/roam-pmset ]; then
+      echo "installed"
+      exit 0
+    fi
+    echo "absent"
+    exit 1
+    ;;
   detect)
     # One-shot detection: exit 0 + kind/ssid/gateway if on a known hotspot,
     # exit 1 if not. No polling.

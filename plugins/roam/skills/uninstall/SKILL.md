@@ -19,6 +19,18 @@ If active → invoke `/roam:off` first.
 ~/.claude/roam/bin/roam-cli watchdog-uninstall
 ```
 
+## Step 2b — Offer to remove the sudoers rule (if installed)
+
+```sh
+~/.claude/roam/bin/roam-cli sudoers-status
+```
+
+If exit 0 (installed), ask the user: "Remove the pmset passwordless sudo rule?" On yes:
+
+```sh
+~/.claude/roam/bin/roam-cli sudoers-uninstall
+```
+
 ## Step 3 — Restore status line
 
 Check `~/.claude/settings.json` `statusLine`:

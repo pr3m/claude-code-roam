@@ -179,10 +179,22 @@ A `deniedPatterns` match overrides the safe-set auto-approve → prompts normall
 
 ## Safety rails (cannot be disabled)
 
-- **Battery auto-exit** — watchdog force-exits below the threshold (default 10%, configurable 5–30)
+- **Battery auto-exit** — watchdog force-exits below the threshold (default 10%, configurable 5–30). Sends a macOS notification and forces sleep via AppleScript (which works regardless of `pmset disablesleep` state), so your work is preserved even if the pmset revert fails.
 - **Battery warning on entry** — if you enter roam on battery power, the banner surfaces the current % and the auto-exit threshold
 - **Crash recovery** — LaunchAgent watchdog cleans up stale state if Claude Code dies
 - **Universal security hard-deny** — shell escapes, `eval`, `curl -L`, `rm -rf /`, `git push` to protected branches always prompt in yolo
+
+### About the battery auto-exit and pmset revert
+
+When the watchdog triggers:
+
+1. Kills `caffeinate` (removes keep-awake assertion) — no sudo needed.
+2. Tries `sudo -n pmset -a disablesleep 0` — only succeeds if either (a) your sudo cache is still warm, or (b) you opted into the sudoers rule during `/roam:install`.
+3. Sends a macOS notification ("Battery at N% — exiting roam and sleeping your Mac").
+4. Invokes AppleScript `tell application "System Events" to sleep` — user-initiated sleep works even when `disablesleep=1` is set, so your machine actually sleeps no matter what.
+5. If the pmset revert in step 2 failed, a breadcrumb file is written. Your next Claude Code session's SessionStart hook surfaces a notice: "pmset may still be set — run `sudo pmset -a disablesleep 0` or reboot to clear it."
+
+**Recommended**: accept the optional sudoers rule during `/roam:install`. Grants passwordless sudo for only those two specific pmset commands — nothing else — and makes the watchdog's revert 100% reliable.
 
 ## Architecture
 

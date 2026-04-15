@@ -17,8 +17,28 @@ mkdir -p "$HOME/.claude/roam/bin"
 printf '%s\n' "$PLUGIN_ROOT" > "$HOME/.claude/roam/plugin-root"
 ln -sfn "$PLUGIN_ROOT/bin/roam-cli.sh" "$HOME/.claude/roam/bin/roam-cli"
 
-# No roam = silent hook (normal case).
-roam_active || exit 0
+# Surface pending-revert breadcrumb from a prior watchdog auto-exit.
+PENDING_REVERT="$HOME/.claude/roam/pending-revert"
+if [ -f "$PENDING_REVERT" ]; then
+  REVERT_INFO="$(cat "$PENDING_REVERT")"
+  # Non-fatal: we just want the additionalContext below to pick it up.
+  export ROAM_PENDING_REVERT="$REVERT_INFO"
+fi
+
+# No roam = silent hook, BUT surface pending-revert notice if any.
+if ! roam_active; then
+  if [ -n "${ROAM_PENDING_REVERT:-}" ]; then
+    MSG="⚠️  Roam auto-exited while you were away (${ROAM_PENDING_REVERT}). Your Mac slept cleanly, but pmset \`disablesleep=1\` may still be set. Run: sudo pmset -a disablesleep 0 to clear it, or just reboot (macOS clears it at boot)."
+    node -e '
+      const s = process.argv[1] || "";
+      process.stdout.write(JSON.stringify({
+        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: s }
+      }));
+    ' "$MSG"
+    rm -f "$PENDING_REVERT"
+  fi
+  exit 0
+fi
 
 STATE_FILE="$(roam_state_file)"
 HOTSPOT_SSID="$(roam_state_read '.config_snapshot.hotspot_ssid')"
@@ -34,7 +54,7 @@ BANNER+="  → /roam:off         — exit roam, resume normal sleep"
 
 if [ "$YOLO_ENABLED" = "true" ]; then
   BANNER+=$'\n\n'
-  BANNER+="  ⚡ Yolo on — safe commands auto-approve. Prod tools (aws/stripe/deploy) always gated."
+  BANNER+="  ⚡ Yolo on — safe dev commands auto-approve. Universal security patterns always prompt."
 fi
 
 # SSID mismatch reminder

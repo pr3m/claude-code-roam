@@ -47,6 +47,24 @@ Read `~/.claude/settings.json`:
   2. `Patch existing` — append `$(~/.claude/roam/bin/roam-cli indicator)` to the user's script (with `.pre-roam` backup).
   3. `Skip` — leave everything as-is, rely on SessionStart banner.
 
+## Step 3b — Offer passwordless pmset (optional, reliable auto-exit)
+
+The watchdog's battery auto-exit reverts `pmset disablesleep` via `sudo`. By default that uses the cached sudo credential, which expires after ~5 minutes — so if you hit 10% battery after being away for hours, the revert silently fails (the Mac still sleeps via AppleScript fallback, but `disablesleep=1` stays set until your next interactive `/roam:off` or a reboot).
+
+Offer via `AskUserQuestion`:
+- Header: `Reliability`
+- Question: `Install a sudoers rule so the watchdog can revert pmset without a password? Grants passwordless sudo for exactly two commands: pmset -a disablesleep 0 and pmset -a disablesleep 1. Nothing else.`
+- Options: `Yes, install (recommended for regular roam use)` / `No, skip`
+
+On Yes, run:
+```sh
+~/.claude/roam/bin/roam-cli sudoers-install
+```
+
+One sudo prompt, writes `/etc/sudoers.d/roam-pmset`. Status check later via `sudoers-status`, reversal via `sudoers-uninstall`.
+
+On No, tell user: "Watchdog still works — it force-sleeps via AppleScript regardless. You just might need to run `sudo pmset -a disablesleep 0` once after an auto-exit, or reboot (which clears it automatically)."
+
 ## Step 4 — TouchID sudo tip (optional, never auto-applied)
 
 ```sh
