@@ -155,22 +155,18 @@ Also check the config for a `statusLineOptOut` flag. If `true`, skip silently (u
 
 ### If state is `other` (existing user statusLine)
 
+**Never replace or overwrite an existing statusLine.** The user's custom statusLine is off-limits — roam only offers to wrap it (which preserves their original command intact, just composes an additional 🎒 next to the output).
+
 Use `AskUserQuestion`:
 - Header: `Status line`
-- Question: `Add a 🎒 indicator to the Claude Code bottom bar so you can tell at a glance that roam is active? Your existing status line stays untouched — I'll wrap it with a composite script that shows both your current content and the 🎒.`
+- Question: `Add a 🎒 indicator to the Claude Code bottom bar so you can tell at a glance that roam is active? Your existing status line stays exactly as-is — I'll wrap it with a composite script that prints your output plus 🎒 when roam is on.`
 - Options:
-  - `Yes, wrap it (recommended)` / "Wrapper script calls both your existing command and the roam indicator"
-  - `Yes, replace with minimal` / "Drop existing status line, use just 🎒" (rare — only if they want to simplify)
+  - `Yes, wrap it` / "Composes your current status line with the roam indicator. /roam:uninstall restores your original."
   - `No thanks` / "Don't add an indicator; rely on the SessionStart banner"
 
 On **Yes, wrap it**:
 ```sh
 ~/.claude/roam/bin/roam-cli statusline-wrap
-```
-
-On **Yes, replace with minimal**:
-```sh
-~/.claude/roam/bin/roam-cli statusline-new
 ```
 
 On **No thanks** → record the opt-out in config (so we never nag again). Use `Edit` to add `"statusLineOptOut": true` to the config file. Then tell the user: "Got it — SessionStart banner will remind you roam is active. Rerun `/roam:install` any time if you change your mind."
