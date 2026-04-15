@@ -28,10 +28,11 @@ fi
 # No roam = silent hook, BUT surface pending-revert notice if any.
 if ! roam_active; then
   if [ -n "${ROAM_PENDING_REVERT:-}" ]; then
-    MSG="⚠️  Roam auto-exited while you were away (${ROAM_PENDING_REVERT}). Your Mac slept cleanly, but pmset \`disablesleep=1\` may still be set. Run: sudo pmset -a disablesleep 0 to clear it, or just reboot (macOS clears it at boot)."
+    MSG="⚠️  Roam auto-exited while you were away (${ROAM_PENDING_REVERT}). Your Mac slept cleanly, but pmset disablesleep=1 may still be set. Run: sudo pmset -a disablesleep 0 to clear it, or just reboot (macOS clears it at boot)."
     node -e '
       const s = process.argv[1] || "";
       process.stdout.write(JSON.stringify({
+        systemMessage: s,
         hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: s }
       }));
     ' "$MSG"
@@ -98,10 +99,15 @@ if [ "$AUTODETECT" != "false" ] && ! roam_ssh_session; then
   fi
 fi
 
-# Emit JSON with additionalContext so Claude sees the banner.
+# Emit BOTH:
+#   systemMessage        — rendered directly in the Claude Code UI so the user
+#                          sees the banner on session start, no user input needed.
+#   additionalContext    — injected into Claude's context so the model knows
+#                          roam is active and can answer questions about it.
 node -e '
   const s = process.argv[1] || "";
   process.stdout.write(JSON.stringify({
+    systemMessage: s,
     hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: s }
   }));
 ' "$BANNER"
