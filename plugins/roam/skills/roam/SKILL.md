@@ -39,44 +39,53 @@ Read the config file at `$HOME/.claude/roam/config.json` (or `$CLAUDE_PLUGIN_DAT
 
 ## Step 3 — First-run wizard (only if config missing)
 
+**No manual typing of SSIDs.** The plugin detects the hotspot from the network connection. If you're already on a hotspot, it offers to save it. If you're not, it tells you to connect and auto-detects when you do.
+
 ### 3a. Detect current network
 
-Run both:
+Run:
 
 ```sh
-ipconfig getsummary en0 2>/dev/null | awk -F ' SSID : ' '/ SSID : / {print $2; exit}'
-route -n get default 2>/dev/null | awk '/gateway:/ {print $2; exit}'
+"$PLUGIN_ROOT/bin/wait-for-hotspot.sh" 0 1
 ```
 
-Classify the gateway:
-- `172.20.10.*` → **iPhone hotspot** (roam-friendly ✅)
-- `192.168.43.*` → **Android hotspot** (roam-friendly ✅)
-- `192.168.137.*` → **Windows Mobile Hotspot** (roam-friendly ✅)
-- Anything else → **regular Wi-Fi** (NOT roam-friendly — coverage ends at the door)
+A `0`-second timeout means "check once and exit". Parse the 3-line output (`kind=`, `ssid=`, `gateway=`). Exit `0` = detected; exit `1` = not on a hotspot right now.
 
-### 3b. Ask about hotspot (MUST use `AskUserQuestion`)
+### 3b-A. Already on a phone hotspot — confirm (use `AskUserQuestion`)
 
-Always use the `AskUserQuestion` tool for these interactive prompts — not plain-text chat. Users expect a clickable dialog, not a numbered list they have to type into.
-
-**If gateway indicates a phone/Windows hotspot** — header: "Hotspot", question: `You're on "<SSID>" — this looks like a phone hotspot (gateway <ip>). Save as your roam hotspot?`, options:
-- `Yes, remember this` / "Use the current SSID as your phone's hotspot name"
-- `Type a different name` / "I'll tell you my actual hotspot SSID"
+Header: `Hotspot`. Question: `Detected <kind> hotspot "<ssid>" (gateway <ip>). Save as your roam hotspot?`. Options:
+- `Save as roam default` / "Use this hotspot every time you /roam"
+- `Use a different one` / "I'll switch to the hotspot I actually want, then you detect it"
 - `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
 
-**If gateway indicates regular Wi-Fi** — header: "Hotspot", question: `You're on "<SSID>" — gateway <ip> suggests this is regular Wi-Fi, not a phone hotspot. Saving it defeats the purpose of roam (you'll lose signal when you walk away). What do you want to do?`, options:
-- `Type phone's hotspot name` / "Recommended — I'll tell you my iPhone/Android hotspot SSID"
-- `Save "<current>" anyway` / "I know what I'm doing — save this as the roam hotspot"
-- `Skip` / "Don't track a hotspot — I'll manage Wi-Fi myself"
+If user picks **Save** → go to Step 3c.
+If user picks **Use a different one** → continue to Step 3b-B (wait loop).
+If user picks **Skip** → set `hotspot_ssid: ""` in config and go to Step 3c.
 
-If user picks "type a different name" / "type phone's hotspot name", use `AskUserQuestion` again with `multiSelect: false` and a free-text affordance — or in plain chat, say: "What's your phone's hotspot name? (Settings → Personal Hotspot on iPhone, Hotspot & tethering on Android)". No password — roam never auto-connects.
+### 3b-B. Not on a hotspot (or want a different one) — scan mode
 
-### 3c. Yolo (MUST use `AskUserQuestion`)
+Tell the user in plain chat:
 
-Header: "Yolo", question: `Enable yolo by default for future roam sessions?`, options:
+> 📱 Turn on Personal Hotspot on the phone you want to use with roam, and connect this Mac to it. I'll detect it automatically (waiting up to 2 minutes). Cancel any time with Ctrl-C.
+
+Then run:
+
+```sh
+"$PLUGIN_ROOT/bin/wait-for-hotspot.sh" 120 2
+```
+
+This polls every 2 seconds for up to 2 minutes. Exit codes:
+- `0` — detected → parse output, confirm via `AskUserQuestion` (Header: `Hotspot`, Question: `Detected <kind> hotspot "<ssid>". Save it as your roam hotspot?`, Options: `Save` / `Keep waiting for a different one` (loop back) / `Skip`).
+- `1` — timeout → ask (Header: `Hotspot`, Options: `Try again` / `Skip for now`).
+- `130` — user cancelled → proceed without a saved hotspot.
+
+### 3c. Yolo (use `AskUserQuestion`)
+
+Header: `Yolo`. Question: `Enable yolo by default for future roam sessions?`. Options:
 - `No (recommended)` / "Normal approval prompts while roaming"
-- `Yes` / "Auto-approve safe tools. Universal security patterns (shell escapes, eval, curl -L, rm -rf /, git push to protected branches) still require confirmation"
+- `Yes` / "Auto-approve safe tools. Shell escapes, eval, curl -L, rm -rf /, git push to protected branches always require confirmation"
 
-Default is `No`. Don't pre-select; let the user choose.
+Default is `No`. Don't pre-select.
 
 ### 3d. Write config
 
