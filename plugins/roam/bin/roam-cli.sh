@@ -59,6 +59,42 @@ case "$CMD" in
     sub="${CMD#statusline-}"
     exec node "$SELF_DIR/statusline.js" "$sub" "$@"
     ;;
+  yolo-status)
+    # Print "on"|"off"|"inactive" (+ exit 0|0|1).
+    STATE="$HOME/.claude/roam/state.json"
+    if [ ! -f "$STATE" ]; then
+      printf 'inactive\n'
+      exit 1
+    fi
+    if grep -q '"yolo_enabled"[[:space:]]*:[[:space:]]*true' "$STATE"; then
+      printf 'on\n'
+    else
+      printf 'off\n'
+    fi
+    exit 0
+    ;;
+  set-yolo)
+    # set-yolo <true|false> — update yolo for the current roam session.
+    new_val="${1:-}"
+    if [ "$new_val" != "true" ] && [ "$new_val" != "false" ]; then
+      printf 'usage: set-yolo <true|false>\n' >&2
+      exit 2
+    fi
+    STATE="$HOME/.claude/roam/state.json"
+    if [ ! -f "$STATE" ]; then
+      printf '❌ Roam is off — enter with /roam first, then /roam:yolo.\n' >&2
+      exit 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+      printf '❌ set-yolo requires jq (brew install jq).\n' >&2
+      exit 1
+    fi
+    tmp=$(mktemp)
+    jq --argjson v "$new_val" '.config_snapshot.yolo_enabled = $v' "$STATE" > "$tmp" && mv "$tmp" "$STATE"
+    printf '✓ yolo is now %s for this session.\n' "$new_val"
+    printf '  (To change your default, use /roam:config.)\n'
+    exit 0
+    ;;
   detect)
     # One-shot detection: exit 0 + kind/ssid/gateway if on a known hotspot,
     # exit 1 if not. No polling.
@@ -117,6 +153,8 @@ roam-cli — Claude Code roam plugin
   roam-cli enter                 Enter mobile mode
   roam-cli off                   Exit mobile mode (alias: exit)
   roam-cli status                Show current state and config
+  roam-cli yolo-status            Print "on"/"off"/"inactive"
+  roam-cli set-yolo <true|false>  Toggle yolo for the current roam session
   roam-cli detect                Detect current hotspot, one-shot
   roam-cli wait [sec] [poll]     Poll for hotspot connection (default 120s, every 2s)
   roam-cli current-ssid          Print the current Wi-Fi SSID

@@ -85,7 +85,8 @@ After that, every `/roam` enter/exit is just a fingerprint tap.
 | `/roam` | "go mobile", "enter roam", "close the lid" | Enter mobile mode. Runs first-run wizard if no config yet. |
 | `/roam:off` | "back at desk", "exit roam", "turn it off" | Revert sleep settings, kill caffeinate, clean state. |
 | `/roam:status` | "is roam on", "roam status" | Show current state (active/off, battery, SSID match, watchdog). |
-| `/roam:config` | "change hotspot", "toggle yolo", "roam settings" | Edit config interactively. |
+| `/roam:config` | "change hotspot", "toggle yolo default", "roam settings" | Edit config interactively (affects future sessions). |
+| `/roam:yolo` | "enable yolo", "turn on yolo", "yolo this session", "disable yolo" | Toggle yolo on / off for the current active roam. Session-scoped; config default unchanged. |
 | `/roam:install` | "set up roam", "install roam" | One-time helper: permission rule, watchdog LaunchAgent, status-line indicator, optional sudoers. |
 | `/roam:uninstall` | "remove roam", "tear it down" | Reverse of install. Restores original status line from backup. |
 | `/roam:test` | "test roam", "smoke test" | Non-destructive self-test — verifies scripts, platform deps, yolo-gate decisions. |
