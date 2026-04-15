@@ -1,0 +1,15 @@
+{
+  "name": "claude-code-roam",
+  "owner": {
+    "name": "Christjan Schumann",
+    "url": "https://github.com/pr3m"
+  },
+  "plugins": [
+    {
+      "name": "roam",
+      "source": "./plugins/roam",
+      "description": "Mobile mode for Claude Code — keep awake, optional constrained yolo, status-line indicator, and a push notification when Claude needs you",
+      "version": "0.1.0"
+    }
+  ]
+}

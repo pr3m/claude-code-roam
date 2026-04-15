@@ -1,0 +1,13 @@
+{
+  "name": "roam",
+  "version": "0.1.0",
+  "description": "Mobile mode for Claude Code. Keeps the laptop awake while you're on the road, shows a 🎒 indicator, pushes notifications when Claude stops for input, optionally enables constrained yolo (prod tools stay gated). macOS v0.1 — Windows/Linux coming in v0.2.",
+  "author": {
+    "name": "Christjan Schumann",
+    "url": "https://github.com/pr3m"
+  },
+  "homepage": "https://github.com/pr3m/claude-code-roam",
+  "repository": "https://github.com/pr3m/claude-code-roam",
+  "license": "MIT",
+  "keywords": ["claude-code", "plugin", "hook", "mobile", "power-management", "statusline", "remote-control"]
+}
