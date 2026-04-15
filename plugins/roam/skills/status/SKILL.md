@@ -5,20 +5,16 @@ description: Show roam state and config. Use when the user says "roam status", "
 
 # /roam:status
 
-Print the current roam state + config.
-
-## Step 1
-
 ```sh
-PLUGIN_ROOT="$(cat ~/.claude/roam/plugin-root 2>/dev/null)"
-"$PLUGIN_ROOT/bin/roam-status.sh"
+~/.claude/roam/bin/roam-cli status
 ```
 
 Show the output verbatim.
 
-## Step 2 — Context-aware hint
+## Context-aware hint
 
-- If state shows "Roam: off" → suggest `/roam` to enter.
-- If "Roam: ON" with dead PID → suggest `/roam:off` to clean up stale state.
-- If SSID doesn't match the saved hotspot → remind: "Tap your hotspot in the wifi menu before closing the lid."
-- If battery < 20% → remind: "Plug in, or roam will auto-exit at 10%."
+After printing status, add a one-line hint:
+- "Roam: off" → suggest `/roam`
+- "Roam: ON" with dead PID → suggest `/roam:off` to clean up stale state
+- SSID doesn't match saved hotspot → "Tap your hotspot in the wifi menu before closing the lid"
+- Battery < 20% → "Plug in, or roam will auto-exit at 10%"

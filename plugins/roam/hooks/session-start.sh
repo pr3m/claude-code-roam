@@ -10,9 +10,12 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=../bin/helpers.sh
 . "$BIN_DIR/helpers.sh"
 
-# Always register the plugin root for skills to discover.
-mkdir -p "$HOME/.claude/roam"
+# Register stable entry point so skills can invoke `~/.claude/roam/bin/roam-cli`
+# regardless of where the plugin is installed. Symlink refreshes every session,
+# so a plugin update or path change is picked up automatically.
+mkdir -p "$HOME/.claude/roam/bin"
 printf '%s\n' "$PLUGIN_ROOT" > "$HOME/.claude/roam/plugin-root"
+ln -sfn "$PLUGIN_ROOT/bin/roam-cli.sh" "$HOME/.claude/roam/bin/roam-cli"
 
 # No roam = silent hook (normal case).
 roam_active || exit 0

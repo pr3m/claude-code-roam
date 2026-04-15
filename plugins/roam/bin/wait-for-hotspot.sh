@@ -29,19 +29,27 @@ case "$POLL"    in *[!0-9]*|'') POLL=2 ;; esac
 
 trap 'exit 130' INT TERM
 
-end_epoch=$(( $(date +%s) + TIMEOUT ))
-
-while [ "$(date +%s)" -lt "$end_epoch" ]; do
+check_and_emit() {
+  local kind
   kind="$(roam_hotspot_kind)"
   case "$kind" in
     iphone|android|windows)
       printf 'kind=%s\n' "$kind"
       printf 'ssid=%s\n' "$(roam_current_ssid)"
       printf 'gateway=%s\n' "$(roam_default_gateway)"
-      exit 0
+      return 0
       ;;
   esac
+  return 1
+}
+
+# Always check at least once — supports TIMEOUT=0 as "one-shot detection".
+check_and_emit && exit 0
+
+end_epoch=$(( $(date +%s) + TIMEOUT ))
+while [ "$(date +%s)" -lt "$end_epoch" ]; do
   sleep "$POLL"
+  check_and_emit && exit 0
 done
 
 printf 'timeout\n'
